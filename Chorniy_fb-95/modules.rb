@@ -66,6 +66,20 @@ module T1
 
     #@rows = {}
 
+    def condparser(cmd)
+        cond = cmd.to_s.split(/\s(?=(\b(or|and)\b\s\(\w+\s==\s\w+\)))/i).uniq
+        cond.each do |n|
+            cond.delete(n) if n.match(/^\w+$/)
+        end
+        i = 0
+        cond.each do |n|
+            cond[i] = n.gsub(/\s/, '').split(/[\(\)]/) - [nil, '']
+            i += 1
+        end
+        cond[0].unshift(nil)
+        return cond
+    end
+
     def create(cmd)
 
         if cmd.match(/\(\)/) || !cmd.match(/\(/) || !cmd.match(/\)/) || !cmd.match(/(create)(?=\s\w+\s\()/)
@@ -74,7 +88,6 @@ module T1
             tbl = cmd.match(/(?<=create\s)\w+/i).to_s
             cols = cmd.scan(/(?<=\()(.*?)(?=\,)|(?<=\,)(.*?)(?=\,)|(?<=\,)(.*?)(?=\))/i) - [nil, '']
             #@rows[tbl] = [cols, 0]
-            p cols
             ic = []
             for col in 0..cols.length() - 1
                 cols[col] -= [nil]
@@ -82,10 +95,9 @@ module T1
                 ic[col] = cols[col][0] if cols[col][1].to_s.match(/indexed/i)
             end
             ic -= [nil]
-            p cols
             #p Tables.all
             puts"there are #{cols.length.to_s} columns"
-            puts"indexed columns are: #{ic}"
+            puts"indexed columns are: #{ic}" if ic.length != 0
         end
         #p @rows
     end
@@ -99,7 +111,7 @@ module T1
             tbl = cmd.match(/(?<=insert\sinto\s)\w+/i).to_s if tbl.match(/into/i)
             #@rows[tbl][1] += 1
             puts tbl
-            values = cmd.gsub(/^(.*?)\(|^\s/, '').split(/[\,\;\)\()]/) - [nil, '', ' ']
+            values = cmd.gsub(/^(.*?)\(|^\s/, '').split(/[\,\)\()]/) - [nil, '', ' ']
             #p values
             # i = 0
             # @rows[tbl][0].each do |n| 
@@ -148,10 +160,10 @@ module T1
             else
                 if cmd.match(/\(\)/) || !cmd.match(/\(/) || !cmd.match(/\)/) || !cmd.match(/^.+?(?=\()/).to_s.match(/select.+from.+where/)
                     puts"there are no arguments! \ntry to use brackets"
-                
+                else
                     cols = cmd.match(/(?<=select\s)(.*?)(?=\sfrom)/i).to_s.split(/[\s\,]/) - [nil, '']
                     puts cols
-                    cnd = cmd.scan(/\((.*?)\)/)
+                    cnd = condparser(cmd.match(/\(.*\)/).to_s)
                     puts cnd
                 end
             end
