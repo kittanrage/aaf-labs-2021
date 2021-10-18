@@ -67,16 +67,20 @@ module T1
     #@rows = {}
 
     def condparser(cmd)
-        cond = cmd.to_s.split(/\s(?=(\b(or|and)\b\s\(\w+\s==\s\w+\)))/i).uniq
+        cond = cmd.to_s.split(/\s(?=(\b(or|and)\b\s\(.*\)))/i).uniq
         cond.each do |n|
             cond.delete(n) if n.match(/^\w+$/)
         end
         i = 0
         cond.each do |n|
-            cond[i] = n.gsub(/\s/, '').split(/[\(\)]/) - [nil, '']
+            cond[i] = n.split(/[\(\)]/) - [nil, '']
             i += 1
         end
         cond[0].unshift(nil)
+        cond.each do |n|
+            cond.delete(n) if n.length() != 2
+        end
+        p cond
         return cond
     end
 
@@ -137,11 +141,13 @@ module T1
             if !cmd.match(/where/i)
                 puts"table #{tbl} deleted"
             else
-                if cmd.match(/\(\)/) || !cmd.match(/\(/) || !cmd.match(/\)/) || !cmd.match(/^.+?(?=\()/).to_s.match(/delete.+where/)
+                if cmd.match(/\(\)/) || !cmd.match(/\(/) || !cmd.match(/\)/) || !cmd.match(/^.+?(?=\()/).to_s.match(/delete.+where/) || cmd.match(/(?<=\)\s)\b(?!and|or\b)\w+(?=\s\()/i)
                     puts"there are no arguments! \ntry to use brackets"
                 else
-                    cnd = cmd.scan(/\((.*?)\)/)
-                    puts cnd
+                    cols = cmd.match(/(?<=select\s)(.*?)(?=\sfrom)/i).to_s.split(/[\s\,]/) - [nil, '']
+                    p cols
+                    cnd = condparser(cmd.match(/\(.*\)/).to_s)
+                    p cnd
                 end
             end
             #puts @rows
@@ -158,13 +164,13 @@ module T1
             if !cmd.match(/where/i)
                 puts"table #{tbl} selected"
             else
-                if cmd.match(/\(\)/) || !cmd.match(/\(/) || !cmd.match(/\)/) || !cmd.match(/^.+?(?=\()/).to_s.match(/select.+from.+where/)
-                    puts"there are no arguments! \ntry to use brackets"
+                if cmd.match(/\(\)/) || !cmd.match(/\(/) || !cmd.match(/\)/) || !cmd.match(/^.+?(?=\()/).to_s.match(/select.+from.+where/) || cmd.match(/(?<=\)\s)\b(?!and|or\b)\w+(?=\s\()/i)
+                    puts"there are no arguments! \ntry to use brackets correctly"
                 else
                     cols = cmd.match(/(?<=select\s)(.*?)(?=\sfrom)/i).to_s.split(/[\s\,]/) - [nil, '']
-                    puts cols
+                    p cols
                     cnd = condparser(cmd.match(/\(.*\)/).to_s)
-                    puts cnd
+                    p cnd
                 end
             end
         end
