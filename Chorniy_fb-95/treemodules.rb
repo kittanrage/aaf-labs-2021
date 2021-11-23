@@ -23,18 +23,15 @@ class Tree
         @root = @TNULL
     end
 
-    def insert(key, value) 
-        
+    def inserttree(key, value)         
         node = Node.new(key, value)
         node.parent = nil
         node.value = value
         node.left = @TNULL
         node.right = @TNULL
-        node.color = 1 
-        
+        node.color = 1         
         node2 = nil
-        node1 = @root
-        
+        node1 = @root        
         while node1 != @TNULL 
             node2 = node1
             if node.value < node1.value 
@@ -42,59 +39,48 @@ class Tree
             else
                 node1 = node1.right
             end
-        end
-               
+        end               
         node.parent = node2
-
         if node2 == nil 
             @root = node
         elsif node.value < node2.value 
             node2.left = node
         else
             node2.right = node
-        end
-        
+        end        
         if node.parent == nil 
             node.color = 0
             return
-        end
-        
+        end        
         if node.parent.parent == nil 
             return
-        end
-        
+        end        
         while node.parent.color == 1 
             if node.parent == node.parent.parent.right 
                 node1 = node.parent.parent.left 
-                if node1.color == 1 
-                    
+                if node1.color == 1                     
                     node1.color = 0
                     node.parent.color = 0
                     node.parent.parent.color = 1
                     node = node.parent.parent
                 else
-                    if node == node.parent.left 
-                        
+                    if node == node.parent.left                         
                         node = node.parent
                         right_rotate(node)
-                    end
-                    
+                    end                    
                     node.parent.color = 0
                     node.parent.parent.color = 1
                     left_rotate(node.parent.parent)
                 end
             else
-                node1 = node.parent.parent.right 
-                
-                if node1.color == 1 
-                    
+                node1 = node.parent.parent.right                 
+                if node1.color == 1                     
                     node1.color = 0
                     node.parent.color = 0
                     node.parent.parent.color = 1
                     node = node.parent.parent 
                 else
-                    if node == node.parent.right 
-                        
+                    if node == node.parent.right                        
                         node = node.parent
                         left_rotate(node)
                     end
@@ -115,8 +101,7 @@ class Tree
     def search(node, value) 
         if node == @TNULL || value == node.value 
             return node
-        end
-        
+        end      
         if value < node.value 
             return search(node.left, value)
         end
@@ -300,39 +285,64 @@ class Tree
         node1.parent = node2
     end
     
+    def maintprint() 
+        printtree(root, "")
+    end
+    
+    def printtree(node, indent)
+        print node.value.to_s + " "  if node.left != nil || node.right != nil
+        printtree(node.left, indent) if node.left != nil
+        printtree(node.right, indent) if node.right != nil
+    end
+
 end
 
 class Table
-    attr_accessor :name, :cols, :values, :forest, :head
+    attr_accessor :name, :cols, :values, :forest
     @@counter = 1
+    @@forest = {}
     
     def initialize(name, cols)
-        @name = name
         @cols = cols
-        @forest = {}
-        @head = {}
-        cols.each do |c|
-            @forest[name + c] = Tree.new()
+        cols.each do |c|            
+            @@forest[name + c] = Tree.new()
         end
     end
 
-    def insertdata(name, values)
-        @head[@@counter] = values
+    def inserttable(name, values)
+        @name = name
         values.each do |c|
             c = c.codepoints.join.to_i
         end
         if @cols.length != values.length
             puts 'error' 
         else
-            for col in 0..cols.length() - 1
-                @forest[name + @cols[col]].insert(@@counter, values[col])
+            for col in 0..@cols.length() - 1
+                @@forest[name + @cols[col]].inserttree(@@counter, values[col])
             end
         end
         @@counter += 1
     end
 
-    def getbykey(key)
-        p @head[key]
+    def deletetable(name, values)
+    end
+
+    def selectalltable(name)
+        @@forest.keys().each do |c|
+            if c.match(name)
+                print c.gsub(name, '') + " "
+                @@forest[c].maintprint()
+                puts ''
+            end
+        end
+    end
+
+    def selectcols(name, cols)
+        cols.each do |c|
+            print c + " "
+            @@forest[name + c].maintprint
+            puts ' '
+        end
     end
 
 end
@@ -375,7 +385,7 @@ module T1
             ic -= [nil]
             puts"there are #{cols.length.to_s} columns"
             puts"indexed columns are: #{ic}" if ic.length != 0
-        end
+        end        
     end
     
     def insert(cmd)
@@ -388,8 +398,7 @@ module T1
             puts tbl
             values = cmd.gsub(/^(.*?)\(|^\s/, '').split(/[\,\)\()]/) - [nil, '', ' ']
             i = 0
-            $tbl.insertdata(tbl, values)
-            p values
+            $tbl.inserttable(tbl, values)
             puts"1 row with #{values.length.to_s} values added to table #{tbl.to_s}"
         end
     end
@@ -419,24 +428,13 @@ module T1
     end
     
     def select(cmd)
-    
         tbl = cmd.match(/(?<=from\s)\w+/i).to_s
-        if (cmd.match(/(?<=select\s)\*(?=\sfrom)/i))
-            puts"all columns in table " + tbl + " selected"
+        cols = cmd.match(/(?<=select\s).+(?=\sfrom)/).to_s.split(", ")
+        if cols[0] == "*"
+            $tbl.selectalltable(tbl) 
         else
-            if !cmd.match(/where/i)
-                puts"table #{tbl} selected"
-            else
-                if cmd.match(/\(\)/) || !cmd.match(/\(/) || !cmd.match(/\)/) || !cmd.match(/^.+?(?=\()/).to_s.match(/select.+from.+where/) || cmd.match(/(?<=\)\s)\b(?!and|or\b)\w+(?=\s\()/i)
-                    puts"there are no arguments! \ntry to use brackets correctly"
-                else
-                    cols = cmd.match(/(?<=select\s)(.*?)(?=\sfrom)/i).to_s.split(/[\s\,]/) - [nil, '']
-                    p cols
-                    cnd = condparser(cmd.match(/\(.*\)/).to_s)
-                    p cnd
-                end
-            end
-        end   
+            $tbl.selectcols(tbl, cols)
+        end
     end
 
 end
