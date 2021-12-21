@@ -1,8 +1,9 @@
 class Node    
-    attr_accessor :key, :value, :left, :right, :parent, :color
+    attr_accessor :key, :index, :value, :left, :right, :parent, :color
 
-    def initialize(key, calue)
+    def initialize(key, index, value)
         @key = key
+        @index = index
         @value = value  
         @parent = nil 
         @left = nil 
@@ -16,16 +17,17 @@ class Tree
     attr_accessor :TNULL, :root
 
     def initialize()
-        @TNULL = Node.new(0, 0)
+        @TNULL = Node.new(0, 0, 0)
         @TNULL.color = 0
         @TNULL.left = nil
         @TNULL.right = nil
         @root = @TNULL
     end
 
-    def inserttree(key, value)         
-        node = Node.new(key, value)
+    def inserttree(key, index, value)         
+        node = Node.new(key, index, value)
         node.parent = nil
+        node.index = index
         node.value = value
         node.left = @TNULL
         node.right = @TNULL
@@ -34,7 +36,7 @@ class Tree
         node1 = @root        
         while node1 != @TNULL 
             node2 = node1
-            if node.value < node1.value 
+            if node.index < node1.index 
                 node1 = node1.left
             else
                 node1 = node1.right
@@ -43,7 +45,7 @@ class Tree
         node.parent = node2
         if node2 == nil 
             @root = node
-        elsif node.value < node2.value 
+        elsif node.index < node2.index 
             node2.left = node
         else
             node2.right = node
@@ -98,29 +100,29 @@ class Tree
 
     end
 
-    def search(node, value) 
-        if node == @TNULL || value == node.value 
+    def searchbyvalue(node, index) 
+        if node == @TNULL || index == node.index 
             return node
         end      
-        if value < node.value 
-            return search(node.left, value)
+        if index < node.index 
+            return searchbyvalue(node.left, index)
         end
-        return search(node.right, value)
+        return searchbyvalue(node.right, index)
     end
 
-    def getkey(node) 
-        return search(@root, node)
-    end  
+    def getnodebyindex(index) 
+        return searchbyvalue(@root, index)
+    end
 
-    def delhelper(node, value) 
+    def delhelper(node, index) 
         
         node3 = @TNULL
         while node != @TNULL 
-            if node.value == value 
+            if node.index == index 
                 node3 = node
             end
             
-            if node.value <= value 
+            if node.index <= index 
                 node = node.right
             else
                 node = node.left
@@ -128,7 +130,7 @@ class Tree
         end
         
         if node3 == @TNULL 
-            puts("Couldn't find value in the tree")
+            puts("Couldn't find index in the tree")
             return
         end
         
@@ -225,8 +227,8 @@ class Tree
         end
     end 
 
-    def delete_node(value) 
-        delhelper(@root, value)
+    def delete_node(index) 
+        delhelper(@root, index)
     end
 
     def swap(node1, node2) 
@@ -286,13 +288,13 @@ class Tree
     end
     
     def maintprint() 
-        printtree(root, "")
+        printtree(root)
     end
     
-    def printtree(node, indent)
+    def printtree(node)
         print node.value.to_s + " "  if node.left != nil || node.right != nil
-        printtree(node.left, indent) if node.left != nil
-        printtree(node.right, indent) if node.right != nil
+        printtree(node.left) if node.left != nil
+        printtree(node.right) if node.right != nil
     end
 
 end
@@ -301,26 +303,23 @@ class Table
     attr_accessor :name, :cols, :values, :forest
     @@counter = 1
     @@forest = {}
+    @@head = {}
     
     def initialize(name, cols)
         @cols = cols
-        cols.each do |c|            
-            @@forest[name + c] = Tree.new()
-        end
+        cols.each {|c| @@forest[name + c] = Tree.new()}
     end
 
     def inserttable(name, values)
         @name = name
-        values.each do |c|
-            c = c.codepoints.join.to_i
-        end
         if @cols.length != values.length
             puts 'error' 
         else
             for col in 0..@cols.length() - 1
-                @@forest[name + @cols[col]].inserttree(@@counter, values[col])
+                @@forest[name + @cols[col]].inserttree(@@counter, values[col].codepoints.join.to_i, values[col])
             end
         end
+        @@head[@@counter] = values
         @@counter += 1
     end
 
@@ -344,27 +343,29 @@ class Table
             puts ' '
         end
     end
+    
+    def selecttablewhere(name, cols, cond)
+        if cols == nil
+            pp @@head[@@forest[name + cond[0]].getnodebyindex(cond[-1].codepoints.join.to_i).key] if cond[1] == '=='
+        else
+            puts 'its not supoused to be this way'
+        end
+    end
 
 end
 
 module T1
 
-    def condparser(cmd)
-        cond = cmd.to_s.split(/\s(?=(\b(or|and)\b\s\(.*\)))/i).uniq
-        cond.each do |n|
-            cond.delete(n) if n.match(/^\w+$/)
+    def getcond(conds)
+        trees = []
+        conds.each do |c| 
+            if c.length == 2 
+                trees << c[1].match(/(?<=\()\w+/).to_s
+            else 
+                trees << c[0].match(/(?<=\()\w+/).to_s
+            end
         end
-        i = 0
-        cond.each do |n|
-            cond[i] = n.split(/[\(\)]/) - [nil, '']
-            i += 1
-        end
-        cond[0].unshift(nil)
-        cond.each do |n|
-            cond.delete(n) if n.length() != 2
-        end
-        p cond
-        return cond
+        puts trees.tally
     end
 
     def create(cmd)
@@ -429,12 +430,22 @@ module T1
     
     def select(cmd)
         tbl = cmd.match(/(?<=from\s)\w+/i).to_s
-        cols = cmd.match(/(?<=select\s).+(?=\sfrom)/).to_s.split(", ")
-        if cols[0] == "*"
-            $tbl.selectalltable(tbl) 
+        cols = cmd.match(/(?<=select\s).+(?=\sfrom)/i).to_s.split(", ")
+        pp @forest
+        if cols[0] == '*'
+            if cmd.match(/(?<=#{Regexp.escape(tbl)}\s)\w+/).to_s == 'where'
+                conds = cmd.match(/(?<=\().+(?=\))/).to_s.split(' ')
+                $tbl.selecttablewhere(tbl, nil, conds)
+            else
+                $tbl.selectalltable(tbl)
+            end
         else
-            $tbl.selectcols(tbl, cols)
+            if cmd.match(/(?<=#{Regexp.escape(tbl)}\s)\w+/).to_s == 'where'
+                puts 'where'
+            else
+                $tbl.selectcols(tbl, cols)
+            end
         end
-    end
+    end 
 
 end

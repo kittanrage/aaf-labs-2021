@@ -7,7 +7,7 @@ while (!cmd.include? "exit")
     #sleep(4)
     #system "cls"
     puts"\ndb is open"
-    cmd = gets(';').gsub("\n",' ').gsub(/\s+/, ' ').chomp.tr('!@#$%^&<>|\\/;','')
+    cmd = gets(';').gsub("\n",' ').gsub(/\s+/, ' ').chomp.tr('@#$%^&|\\/;','').downcase
     if !cmd.match(/\b(create)\b|\b(insert)\b|\b(select)\b|\b(delete)\b|\b(exit)\b/)
         cmd = '' 
         puts 'there are no commands in your query'
