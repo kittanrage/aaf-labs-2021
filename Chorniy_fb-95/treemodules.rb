@@ -185,8 +185,7 @@ class Tree
                         right_rotate(nodep)
                         nodep = node1.parent.right
                     end
-                    
-                    
+                                       
                     nodep.color = node1.parent.color
                     node1.parent.color = 0
                     nodep.right.color = 0
@@ -203,8 +202,7 @@ class Tree
                     nodep = node1.parent.left
                 end
                 
-                if nodep.left.color == 0 && nodep.right.color == 0 
-                    
+                if nodep.left.color == 0 && nodep.right.color == 0                    
                     nodep.color = 1
                     node1 = node1.parent
                 else
@@ -215,8 +213,7 @@ class Tree
                         left_rotate(nodep)
                         nodep = node1.parent.left 
                     end
-                    
-                    
+                                       
                     nodep.color = node1.parent.color
                     node1.parent.color = 0
                     nodep.left.color = 0
@@ -365,13 +362,11 @@ class Table
     end
 
     def selectcols(name, cols)
-        cols.each { |c| @@forest[name + c].treetolist() }
+        columns = []
+        @@forest.keys().each {|c| columns.append(c.gsub(name, '')) if c.match(name)}
+        (columns - cols).each {|c| @@forest[name + c].treetolist()}
         rows = []
-        ($values.length / cols.length).times do |i|
-            onerow = []
-            cols.length.times { |j| onerow.append($values[i + j * ($values.length / cols.length)]) }
-            rows << onerow
-        end
+        @@head.each {|c| rows << c[1][1] - $values if c[1][0] == name}
         table = Terminal::Table.new :title => name, :headings => cols, :rows => rows
         puts table
         $values = []
