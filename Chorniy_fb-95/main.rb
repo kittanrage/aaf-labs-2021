@@ -17,9 +17,17 @@ while (!cmd.include? "exit")
     T1.create(cmd) if (cmd.match(/create/i))  
     
     T1.insert(cmd) if (cmd.match(/insert/i))  
-
-    T1.delete(cmd) if (cmd.match(/delete/i))
     
-    T1.select(cmd) if (cmd.match(/select/i))
+    begin
+        T1.deletecmd(cmd) if (cmd.match(/delete/i))
+    rescue NoMethodError => e
+        puts 'empty table'
+    end
+
+    begin
+        T1.select(cmd) if (cmd.match(/select/i))
+    rescue NoMethodError => e
+        puts 'empty table'
+    end
 
 end

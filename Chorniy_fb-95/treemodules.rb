@@ -1,3 +1,5 @@
+require 'terminal-table'
+
 class Node    
     attr_accessor :key, :index, :value, :left, :right, :parent, :color
 
@@ -100,18 +102,18 @@ class Tree
 
     end
 
-    def searchbyvalue(node, index) 
+    def searchbyindex(node, index) 
         if node == @TNULL || index == node.index 
             return node
         end      
         if index < node.index 
-            return searchbyvalue(node.left, index)
+            return searchbyindex(node.left, index)
         end
-        return searchbyvalue(node.right, index)
+        return searchbyindex(node.right, index)
     end
 
     def getnodebyindex(index) 
-        return searchbyvalue(@root, index)
+        return searchbyindex(@root, index)
     end
 
     def delhelper(node, index) 
@@ -297,6 +299,20 @@ class Tree
         printtree(node.right) if node.right != nil
     end
 
+    def treetolist()
+        values = listhelper(root)
+        return values
+    end
+
+    $values = []
+    def listhelper(node)
+        $values.append(node.value.to_s)  if node.left != nil || node.right != nil
+        listhelper(node.left) if node.left != nil
+        listhelper(node.right) if node.right != nil
+        return $values
+    end
+
+
 end
 
 class Table
@@ -319,34 +335,56 @@ class Table
                 @@forest[name + @cols[col]].inserttree(@@counter, values[col].codepoints.join.to_i, values[col])
             end
         end
-        @@head[@@counter] = values
+        @@head[@@counter] = [name, values]
         @@counter += 1
     end
 
-    def deletetable(name, values)
+    def deletetable(name)
+        @@forest.keys().each {|c| @@forest.delete(c) if c.match(name)}
+        @@head.each { |c| @@head.delete(c[0]) if c[1][0] == name}
+    end
+
+    def deletetablewhere(name, cond)
+        cols = []
+        @@forest.keys().each {|c| cols.append(c.gsub(name, '')) if c.match(name)}
+        values = []
+        @@head.each { |c| values = c[1][1] if c[1][1].include? cond[-1]}
+        @@head.each { |c| @@head.delete(c[0]) if c[0] == @@forest[name + cond[0]].getnodebyindex(cond[-1].codepoints.join.to_i).key}
+        cols.each do |i| 
+            values.each { |j| @@forest[name + i].delete_node(j.codepoints.join.to_i) if @@forest[name + i].getnodebyindex(j.codepoints.join.to_i).index == j.codepoints.join.to_i}
+        end
     end
 
     def selectalltable(name)
-        @@forest.keys().each do |c|
-            if c.match(name)
-                print c.gsub(name, '') + " "
-                @@forest[c].maintprint()
-                puts ''
-            end
-        end
+        cols = []
+        @@forest.keys().each {|c| cols.append(c.gsub(name, '')) if c.match(name)}
+        rows = []
+        @@head.each {|c| rows << c[1][1] if c[1][0] == name}
+        table = Terminal::Table.new :title => name, :headings => cols, :rows => rows
+        puts table
     end
 
     def selectcols(name, cols)
-        cols.each do |c|
-            print c + " "
-            @@forest[name + c].maintprint
-            puts ' '
+        cols.each { |c| @@forest[name + c].treetolist() }
+        rows = []
+        ($values.length / cols.length).times do |i|
+            onerow = []
+            cols.length.times { |j| onerow.append($values[i + j * ($values.length / cols.length)]) }
+            rows << onerow
         end
+        table = Terminal::Table.new :title => name, :headings => cols, :rows => rows
+        puts table
+        $values = []
     end
     
     def selecttablewhere(name, cols, cond)
         if cols == nil
-            pp @@head[@@forest[name + cond[0]].getnodebyindex(cond[-1].codepoints.join.to_i).key] if cond[1] == '=='
+            cols = []
+            @@forest.keys().each {|c| cols.append(c.gsub(name, '')) if c.match(name)}
+            rows = []
+            rows << @@head[@@forest[name + cond[0]].getnodebyindex(cond[-1].codepoints.join.to_i).key][1]
+            table = Terminal::Table.new :title => name, :headings => cols, :rows => rows
+            puts table
         else
             puts 'its not supoused to be this way'
         end
@@ -355,18 +393,6 @@ class Table
 end
 
 module T1
-
-    def getcond(conds)
-        trees = []
-        conds.each do |c| 
-            if c.length == 2 
-                trees << c[1].match(/(?<=\()\w+/).to_s
-            else 
-                trees << c[0].match(/(?<=\()\w+/).to_s
-            end
-        end
-        puts trees.tally
-    end
 
     def create(cmd)
 
@@ -396,32 +422,30 @@ module T1
         else
             tbl = cmd.match(/(?<=insert\s)\w+/i).to_s
             tbl = cmd.match(/(?<=insert\sinto\s)\w+/i).to_s if tbl.match(/into/i)
-            puts tbl
-            values = cmd.gsub(/^(.*?)\(|^\s/, '').split(/[\,\)\()]/) - [nil, '', ' ']
+            values = cmd.gsub(/^(.*?)\(|^\s/, '').gsub(')', '').split(', ') - [nil, '', ' ']
             i = 0
             $tbl.inserttable(tbl, values)
             puts"1 row with #{values.length.to_s} values added to table #{tbl.to_s}"
         end
     end
     
-    def delete(cmd)
+    def deletecmd(cmd)
     
         tbl = cmd.match(/(?<=delete\s)\w+/i).to_s
         tbl = cmd.match(/(?<=delete\sfrom\s)\w+/i).to_s if tbl.match(/from/i)
-        puts tbl
         if !tbl.match(/\w+/)
             puts"error occured"
         else
             if !cmd.match(/where/i)
-                puts"table #{tbl} deleted"
+                puts "table #{tbl} deleted"
+                $tbl.deletetable(tbl)
             else
                 if cmd.match(/\(\)/) || !cmd.match(/\(/) || !cmd.match(/\)/) || !cmd.match(/^.+?(?=\()/).to_s.match(/delete.+where/) || cmd.match(/(?<=\)\s)\b(?!and|or\b)\w+(?=\s\()/i)
                     puts"there are no arguments! \ntry to use brackets"
                 else
-                    cols = cmd.match(/(?<=select\s)(.*?)(?=\sfrom)/i).to_s.split(/[\s\,]/) - [nil, '']
-                    p cols
-                    cnd = condparser(cmd.match(/\(.*\)/).to_s)
-                    p cnd
+                    cond = cmd.match(/(?<=\().+(?=\))/).to_s.split(' ')
+                    $tbl.deletetablewhere(tbl, cond)
+                    puts "object has been deleted from #{tbl}"
                 end
             end
         end
@@ -431,7 +455,6 @@ module T1
     def select(cmd)
         tbl = cmd.match(/(?<=from\s)\w+/i).to_s
         cols = cmd.match(/(?<=select\s).+(?=\sfrom)/i).to_s.split(", ")
-        pp @forest
         if cols[0] == '*'
             if cmd.match(/(?<=#{Regexp.escape(tbl)}\s)\w+/).to_s == 'where'
                 conds = cmd.match(/(?<=\().+(?=\))/).to_s.split(' ')
